@@ -22,3 +22,11 @@ resource "azurerm_log_analytics_workspace" "log_analytics_workspace" {
   sku                 = "PerGB2018"
   retention_in_days   = 30
 }
+
+module "function_app" {
+  for_each                   = toset(var.function_app_locations)
+  source                     = "./modules/function_app"
+  app_name                   = var.app_name
+  location                   = each.value
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.log_analytics_workspace.id
+}

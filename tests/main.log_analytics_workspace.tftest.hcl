@@ -1,10 +1,5 @@
 mock_provider "azurerm" {
-}
-
-run "setup_tests" {
-  module {
-    source = "./setup"
-  }
+  source = "./azurerm"
 }
 
 run "create_log_analytics_workspace" {
@@ -15,7 +10,7 @@ run "create_log_analytics_workspace" {
   }
 
   variables {
-    app_name = run.setup_tests.app_name
+    app_name = "testapp"
   }
 
   assert {

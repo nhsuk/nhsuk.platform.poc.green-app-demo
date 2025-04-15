@@ -1,10 +1,5 @@
 mock_provider "azurerm" {
-}
-
-run "setup_tests" {
-  module {
-    source = "./setup"
-  }
+  source = "./azurerm"
 }
 
 run "create_resource_group" {
@@ -15,7 +10,7 @@ run "create_resource_group" {
   }
 
   variables {
-    app_name = run.setup_tests.app_name
+    app_name = "testapp"
   }
 
   assert {
