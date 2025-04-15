@@ -27,6 +27,12 @@ jobs:
           terraform validate
         working-directory: infrastructure
 
+      - name: Terraform Test
+        run: |
+          terraform init -backend=false
+          terraform test
+        working-directory: tests
+
   code-analysis:
     name: Code Analysis
     runs-on: ubuntu-latest
