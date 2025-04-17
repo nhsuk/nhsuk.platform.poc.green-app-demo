@@ -24,6 +24,6 @@ run "create_function_app" {
       for _, function_app in module.function_app :
       contains(var.function_app_locations, function_app.resource_group.location)
     ])
-    error_message = "One or more function app locations are not in the expected locations."
+    error_message = "One or more function app locations are not as expected."
   }
 }
