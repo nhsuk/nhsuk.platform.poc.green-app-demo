@@ -1,0 +1,47 @@
+<policies>
+    <inbound>
+        <base />
+        <trace source="GreenAppDemo">
+            <message>HELLO WORLD!</message>
+        </trace>
+        <!-- Get carbon intensity for each region from the API -->
+        <send-request mode="new" response-variable-name="carbonIntensityResponse" timeout="10" ignore-error="false">
+            <set-url>@{
+                string baseUrl = "https://api.watttime.org/v3/forecast?region=CAISO_NORTH&signal_type=co2_moer&horizon_hours=0";
+                return new System.Uri(baseUrl).AbsoluteUri;
+            }</set-url>
+            <set-method>GET</set-method>
+            <set-header name="Authorization" exists-action="override">
+                <!-- Get a token by registering for the API then calling the login endpoint: https://docs.watttime.org/#tag/Authentication/operation/get_token_login_get -->
+                <value>Bearer {TOKEN}</value>
+            </set-header>
+        </send-request>
+        <!-- Extract the intensity values from the responses -->
+        <set-variable name="carbonIntensity" value="@{
+                var raw = ((IResponse)context.Variables["carbonIntensityResponse"]).Body.As<string>();
+                var parsed = JObject.Parse(raw);                
+                return parsed["data"][0]["value"].ToString();
+            }" />
+        <trace source="GreenAppDemo">
+            <message>@(context.Variables.GetValueOrDefault<string>("carbonIntensity"))</message>
+        </trace>
+        <!-- Conditional routing based on status -->
+        <!-- <choose>
+            <when condition="@(context.Variables.GetValueOrDefault<string>("carbonIntensity") < 100)">
+                <set-backend-service base-url="https://backend-a.example.com" />
+            </when>
+            <otherwise>
+                <set-backend-service base-url="https://backend-b.example.com" />
+            </otherwise>
+        </choose> -->
+    </inbound>
+    <backend>
+        <base />
+    </backend>
+    <outbound>
+        <base />
+    </outbound>
+    <on-error>
+        <base />
+    </on-error>
+</policies>
