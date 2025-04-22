@@ -1,47 +1,76 @@
 <policies>
-    <inbound>
-        <base />
-        <trace source="GreenAppDemo">
-            <message>HELLO WORLD!</message>
-        </trace>
-        <!-- Get carbon intensity for each region from the API -->
-        <send-request mode="new" response-variable-name="carbonIntensityResponse" timeout="10" ignore-error="false">
-            <set-url>@{
-                string baseUrl = "https://api.watttime.org/v3/forecast?region=CAISO_NORTH&signal_type=co2_moer&horizon_hours=0";
-                return new System.Uri(baseUrl).AbsoluteUri;
-            }</set-url>
-            <set-method>GET</set-method>
-            <set-header name="Authorization" exists-action="override">
-                <!-- Get a token by registering for the API then calling the login endpoint: https://docs.watttime.org/#tag/Authentication/operation/get_token_login_get -->
-                <value>Bearer {TOKEN}</value>
-            </set-header>
-        </send-request>
-        <!-- Extract the intensity values from the responses -->
-        <set-variable name="carbonIntensity" value="@{
-                var raw = ((IResponse)context.Variables["carbonIntensityResponse"]).Body.As<string>();
-                var parsed = JObject.Parse(raw);                
-                return parsed["data"][0]["value"].ToString();
-            }" />
-        <trace source="GreenAppDemo">
-            <message>@(context.Variables.GetValueOrDefault<string>("carbonIntensity"))</message>
-        </trace>
-        <!-- Conditional routing based on status -->
-        <!-- <choose>
-            <when condition="@(context.Variables.GetValueOrDefault<string>("carbonIntensity") < 100)">
-                <set-backend-service base-url="https://backend-a.example.com" />
-            </when>
-            <otherwise>
-                <set-backend-service base-url="https://backend-b.example.com" />
-            </otherwise>
-        </choose> -->
-    </inbound>
-    <backend>
-        <base />
-    </backend>
-    <outbound>
-        <base />
-    </outbound>
-    <on-error>
-        <base />
-    </on-error>
+	<inbound>
+		<base />
+		<trace source="GreenAppDemo">
+			<message>HELLO WORLD!</message>
+		</trace>
+		<!-- Initialize a variable to store carbon intensities -->
+		<set-variable name="carbonData" value="@{
+			return JObject.Parse("{}");
+		}" />
+		<!-- Call external API for each region -->
+		<!-- North West England -->
+		<send-request mode="new" response-variable-name="northWestEnglandResponse" timeout="10" ignore-error="false">
+			<set-url>https://api.carbonintensity.org.uk/regional/regionid/3</set-url>
+			<set-method>GET</set-method>
+		</send-request>
+		<set-variable name="carbonData" value="@{
+            var json = JObject.Parse(((IResponse)context.Variables["northWestEnglandResponse"]).Body.As<string>());
+            var intensity = json["data"][0]["data"][0]["intensity"]["forecast"].ToString();
+            var carbonData = context.Variables.GetValueOrDefault<JObject>("carbonData");
+            carbonData["NorthWestEngland"] = intensity;
+            return carbonData;
+        }" />
+		<!-- South West England -->
+		<send-request mode="new" response-variable-name="southWestEnglandResponse" timeout="10" ignore-error="false">
+			<set-url>https://api.carbonintensity.org.uk/regional/regionid/11</set-url>
+			<set-method>GET</set-method>
+		</send-request>
+		<set-variable name="carbonData" value="@{
+            var json = JObject.Parse(((IResponse)context.Variables["southWestEnglandResponse"]).Body.As<string>());
+            var intensity = json["data"][0]["data"][0]["intensity"]["forecast"].ToString();
+            var carbonData = context.Variables.GetValueOrDefault<JObject>("carbonData");
+            carbonData["SouthWestEngland"] = intensity;
+            return carbonData;
+        }" />
+		<!-- South Wales -->
+		<send-request mode="new" response-variable-name="southWalesResponse" timeout="10" ignore-error="false">
+			<set-url>https://api.carbonintensity.org.uk/regional/regionid/7</set-url>
+			<set-method>GET</set-method>
+		</send-request>
+		<set-variable name="carbonData" value="@{
+            var json = JObject.Parse(((IResponse)context.Variables["southWalesResponse"]).Body.As<string>());
+            var intensity = json["data"][0]["data"][0]["intensity"]["forecast"].ToString();
+            var carbonData = context.Variables.GetValueOrDefault<JObject>("carbonData");
+            carbonData["SouthWales"] = intensity;
+            return carbonData;
+        }" />
+		<!-- Determine region with minimum carbon intensity -->
+		<set-variable name="greenestRegion" value="@{
+			var data = context.Variables.GetValueOrDefault<JObject>("carbonData");
+			var minRegion = data.Properties().OrderBy(p => (int)p.Value).First().Name;
+			return minRegion;
+		}" />
+		<!-- Route to the backend for the selected region -->
+		<choose>
+			<when condition="@(context.Variables.GetValueOrDefault<string>("greenestRegion") == "NorthWestEngland")">
+				<set-backend-service base-url="https://backend-northwestengland.example.com" />
+			</when>
+			<when condition="@(context.Variables.GetValueOrDefault<string>("greenestRegion") == "SouthWestEngland")">
+				<set-backend-service base-url="https://backend-southwestengland.example.com" />
+			</when>
+			<when condition="@(context.Variables.GetValueOrDefault<string>("greenestRegion") == "South Wales")">
+				<set-backend-service base-url="https://backend-southwales.example.com" />
+			</when>
+		</choose>
+	</inbound>
+	<backend>
+		<base />
+	</backend>
+	<outbound>
+		<base />
+	</outbound>
+	<on-error>
+		<base />
+	</on-error>
 </policies>
