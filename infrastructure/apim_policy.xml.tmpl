@@ -1,0 +1,55 @@
+<policies>
+  <inbound>
+    <base />
+    <!-- Initialize a variable to store carbon intensities -->
+		<set-variable name="carbonData" value="@{
+			return JObject.Parse("{}");
+		}" />
+		
+    <!-- Call carbon api for each region -->
+    
+    %{ for region in backend_regions ~}
+		
+    <!-- ${region.name} -->
+    <send-request mode="new" response-variable-name="${region.code}Response" timeout="10" ignore-error="false">
+			<set-url>https://api.carbonintensity.org.uk/regional/regionid/${region.api_id}</set-url>
+			<set-method>GET</set-method>
+		</send-request>
+		<set-variable name="carbonData" value="@{
+      var json = JObject.Parse(((IResponse)context.Variables["${region.code}Response"]).Body.As<string>());
+      var intensity = json["data"][0]["data"][0]["intensity"]["forecast"].ToString();
+      var carbonData = context.Variables.GetValueOrDefault<JObject>("carbonData");
+      carbonData["${region.code}"] = intensity;
+      return carbonData;
+    }" />
+    
+    %{ endfor ~}
+
+		<!-- Determine region with lowest carbon intensity -->
+		<set-variable name="greenestRegion" value="@{
+			var data = context.Variables.GetValueOrDefault<JObject>("carbonData");
+			var minRegion = data.Properties().OrderBy(p => (int)p.Value).First().Name;
+			return minRegion;
+		}" />
+
+		<!-- Route to the backend for the selected region -->
+		<choose>
+      %{ for region in backend_regions ~}
+
+			<when condition="@(context.Variables.GetValueOrDefault<string>("greenestRegion") == "${region.code}")">
+				<set-backend-service base-url="${region.backend.function_app.default_hostname}" />
+			</when>
+      
+      %{ endfor ~}
+		</choose>
+  </inbound>
+  <backend>
+    <base />
+  </backend>
+  <outbound>
+    <base />
+  </outbound>
+  <on-error>
+    <base />
+  </on-error>
+</policies>

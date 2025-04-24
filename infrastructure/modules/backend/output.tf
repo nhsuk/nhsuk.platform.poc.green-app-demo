@@ -1,5 +1,5 @@
-output "resource_group" {
-  value = azurerm_resource_group.resource_group
+output "region_code" {
+  value = var.region_code
 }
 
 output "storage_account" {

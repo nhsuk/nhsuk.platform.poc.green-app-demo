@@ -14,7 +14,7 @@ run "create_log_analytics_workspace" {
   }
 
   assert {
-    condition     = azurerm_log_analytics_workspace.log_analytics_workspace.name == "law-${var.app_name}"
+    condition     = azurerm_log_analytics_workspace.log_analytics_workspace.name == "${var.app_name}-law"
     error_message = "Log analytics workspace name not as expected."
   }
 
