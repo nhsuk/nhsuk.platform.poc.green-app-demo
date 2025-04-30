@@ -37,7 +37,7 @@
       %{ for region in backend_regions ~}
 
 			<when condition="@(context.Variables.GetValueOrDefault<string>("greenestRegion") == "${region.code}")">
-				<set-backend-service base-url="${region.backend.function_app.default_hostname}" />
+				<set-backend-service base-url="https://${region.backend.function_app.default_hostname}" />
 			</when>
       
       %{ endfor ~}
